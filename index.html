@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>24-48 Çalışma / Tatil Takvimi</title>
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+
+  <style>
+    /* YENİ TASARIM NOTLARI:
+      - Renk Paleti: Tailwind CSS'in "slate" (koyu gri/mavi), "rose" (kırmızı) ve "emerald" (yeşil) 
+        renk paletleri baz alınarak daha modern ve yüksek kontrastlı bir görünüm elde edildi.
+    
+      - Belirginlik: Çalışma ve tatil günleri artık soluk gradyanlar yerine 
+        tamamen dolu arka plan renklerine sahip. Bu, "belirginlik" talebini karşılıyor.
+    
+      - Duyarlılık (Responsive): Ekran küçüldükçe takvim hücrelerinin boyutu ayarlandı. 
+        Çok küçük ekranlarda (örn. 400px altı) okunabilirliği artırmak için 
+        hücre içindeki "Çalışma / Tatil" yazıları gizlendi (renk yeterli bilgiyi veriyor).
+    
+      - Okunabilirlik: Kart tasarımları sadeleştirildi, gölgeler azaltıldı ve daha net 
+        bir görünüm için "pill" (hap) şeklindeki butonlar yerine modern, 
+        hafif yuvarlatılmış köşeli butonlar kullanıldı.
+    */
+
+    /* Çift tık zoom ve seçim engelleme */
+    html, body {
+      -webkit-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    input, button {
+      -webkit-user-select: auto;
+      user-select: auto;
+    }
+
+    body {
+      -webkit-touch-callout: none;
+      margin: 0;
+      /* Daha modern bir font ailesi */
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        Helvetica, Arial, sans-serif;
+      /* Ana Arka Plan Rengi (Slate 950) */
+      background: #020617;
+      /* Ana Metin Rengi (Slate 200) */
+      color: #e2e8f0;
+    }
+
+    .app {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    h1 {
+      font-size: 1.75rem; /* Biraz daha büyük */
+      margin: 0 0 8px;
+      color: #f8fafc; /* Beyaz */
+    }
+
+    .muted {
+      font-size: 0.9rem;
+      /* Sessiz Metin Rengi (Slate 400) */
+      color: #94a3b8;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    .card {
+      /* Daha sade kart tasarımı (Slate 900) */
+      background: #0f172a;
+      border-radius: 12px; /* Daha yumuşak köşeler */
+      padding: 16px;
+      /* İnce bir sınır (Slate 800) */
+      border: 1px solid #1e293b;
+      margin-bottom: 16px;
+      /* Daha sade bir gölge */
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px; /* Artırılmış boşluk */
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .row:last-child {
+      margin-bottom: 0;
+    }
+
+    label {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: #cbd5e1; /* Slate 300 */
+    }
+
+    input[type="date"] {
+      padding: 8px 12px;
+      border-radius: 6px; /* Düğmelerle aynı */
+      border: 1px solid #334155; /* Slate 700 */
+      background: #1e293b; /* Slate 800 */
+      color: #e2e8f0;
+      font-size: 0.9rem;
+    }
+
+    /* Ana Buton Stili (Primary) */
+    button {
+      border-radius: 6px;
+      border: 1px solid #2563eb; /* Blue 600 */
+      background: #2563eb;
+      color: #ffffff;
+      padding: 8px 16px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+    button:hover {
+      background: #1d4ed8; /* Blue 700 */
+    }
+    button:active {
+      transform: scale(0.97);
+      opacity: 0.95;
+    }
+
+    /* İkincil Buton Stili (Secondary/Ghost) */
+    .small-btn,
+    .cal-nav-btn {
+      border: 1px solid #334155; /* Slate 700 */
+      background: transparent; /* Şeffaf */
+      color: #cbd5e1; /* Slate 300 */
+      padding: 6px 12px;
+      font-size: 0.85rem;
+    }
+    .small-btn:hover,
+    .cal-nav-btn:hover {
+      background: #1e293b; /* Slate 800 */
+      border-color: #475569; /* Slate 600 */
+    }
+
+    .pill {
+      border-radius: 999px;
+      border: 1px solid #334155; /* Slate 700 */
+      background: #1e293b; /* Slate 800 */
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      color: #94a3b8; /* Slate 400 */
+    }
+
+    .calendar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .month-title {
+      font-weight: 600;
+      font-size: 1.1rem;
+      color: #f1f5f9; /* Slate 100 */
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 0.8rem;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #1e293b; /* Slate 800 */
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+    }
+
+    /* === BELİRGİN RENKLER === */
+    .dot-work {
+      background: #e11d48; /* Rose 600 */
+    }
+    .dot-off {
+      background: #059669; /* Emerald 600 */
+    }
+    .dot-weekend {
+      border: 1px solid #4f46e5; /* Indigo 600 */
+      background: transparent;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 5px; /* Hücreler arası boşluk */
+    }
+
+    .weekday-header {
+      text-align: center;
+      padding: 4px 0;
+      color: #94a3b8; /* Slate 400 */
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    .day-cell {
+      min-height: 80px; /* Daha ferah hücreler */
+      border-radius: 8px; /* Yumuşak köşe */
+      padding: 8px;
+      box-sizing: border-box;
+      text-align: left;
+      position: relative;
+      /* Varsayılan Hücre Rengi (Slate 800) */
+      background: #1e293b;
+      border: 1px solid #1e293b;
+      transition: all 0.2s;
+      overflow: hidden;
+      /* İçeriği daha iyi kontrol etmek için */
+      display: flex;
+      flex-direction: column;
+    }
+
+    .day-number {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #cbd5e1; /* Slate 300 */
+    }
+
+    .day-label {
+      font-size: 0.75rem;
+      margin-top: 4px;
+      font-weight: 500;
+    }
+
+    /* === EN ÖNEMLİ DEĞİŞİKLİK: BELİRGİN HÜCRELER === */
+
+    .work-day {
+      /* Çalışma Rengi (Rose 600) */
+      background-color: #e11d48;
+      border-color: #e11d48;
+    }
+    .work-day .day-number {
+      color: #fff;
+    }
+    .work-day .day-label {
+      color: #fecdd3; /* Rose 100 */
+    }
+
+    .off-day {
+      /* Tatil Rengi (Emerald 600) */
+      background-color: #059669;
+      border-color: #059669;
+    }
+    .off-day .day-number {
+      color: #fff;
+    }
+    .off-day .day-label {
+      color: #a7f3d0; /* Emerald 100 */
+    }
+
+    /* Hafta Sonu: İnce bir çerçeve ekler */
+    .weekend {
+      /* Indigo 600 çerçeve */
+      border-color: #4f46e5;
+    }
+    /* Normal (tatil/çalışma olmayan) hafta sonu gün sayısı */
+    .day-cell:not(.work-day):not(.off-day).weekend .day-number {
+       color: #a5b4fc; /* Indigo 300 */
+    }
+
+
+    /* Bugün: Parlak sarı bir çerçeve */
+    .today {
+      /* Z-index ile çerçevenin diğer stilleri ezmesi sağlanır */
+      box-shadow: 0 0 0 2px #facc15; /* Yellow 400 */
+      z-index: 10;
+    }
+
+    .empty {
+      background: transparent;
+      border-color: transparent;
+    }
+
+    /* === RESPONSIVE İYİLEŞTİRMELER === */
+
+    @media (max-width: 600px) {
+      .card {
+        padding: 12px;
+      }
+      .day-cell {
+        min-height: 60px; /* Daha küçük hücreler */
+        padding: 6px;
+        border-radius: 6px;
+      }
+      .day-number {
+        font-size: 0.9rem;
+      }
+      .day-label {
+        font-size: 0.7rem;
+      }
+      h1 {
+        font-size: 1.5rem;
+      }
+      .weekday-header {
+        font-size: 0.75rem;
+      }
+    }
+
+    @media (max-width: 400px) {
+      /* Çok küçük ekranlarda... */
+      .day-cell {
+        min-height: 50px;
+        padding: 4px;
+        justify-content: center; /* Sayıyı ortala */
+        align-items: center;
+      }
+      /* Renk zaten bilgiyi verdiği için yazıyı gizle */
+      .day-label {
+        display: none;
+      }
+      .weekday-header {
+        font-size: 0.7rem;
+      }
+      .legend {
+        gap: 6px;
+      }
+      .legend-item {
+        font-size: 0.75rem;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <h1>24-48 Çalışma / Tatil Takvimi</h1>
+  <div class="muted">
+    En son <strong>işten çıktığın günü</strong> seç; uygulama
+    24 saat çalışma → 48 saat tatil döngüsüne göre tüm takvimi renklendirsin.
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <label for="lastExitDate"><strong>En son işten çıktığın gün</strong> (tarihle ayarlamak istersen):</label>
+    </div>
+
+    <div class="row">
+      <button type="button" class="small-btn" id="exitTodayBtn">Bugün çıktım</button>
+      <button type="button" class="small-btn" id="exitYesterdayBtn">Dün çıktım</button>
+      <button type="button" class="small-btn" id="exitTwoDaysBtn">2 gün önce çıktım</button>
+    </div>
+
+    <div class="row">
+      <input type="date" id="lastExitDate" />
+      <button id="saveBtn">Güncelle</button>
+      <span id="info" class="muted" style="margin-bottom: 0;"></span>
+    </div>
+
+    <div class="muted" style="margin-top:12px; margin-bottom: 0;">
+      Döngü: <span class="pill">İşten çıkış günü = Tatil 1</span> → 
+      <span class="pill">Sonraki gün = Tatil 2</span> → 
+      <span class="pill">Sonraki gün = Çalışma</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="calendar-header">
+      <button class="cal-nav-btn" id="prevMonthBtn">◀ Önceki</button>
+      <div class="month-title" id="monthTitle"></div>
+      <button class="cal-nav-btn" id="nextMonthBtn">Sonraki ▶</button>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item">
+        <span class="dot dot-work"></span> Çalışma
+      </div>
+      <div class="legend-item">
+        <span class="dot dot-off"></span> Tatil
+      </div>
+      <div class="legend-item">
+        <span class="dot dot-weekend"></span> Hafta Sonu
+      </div>
+      <div class="legend-item">
+        <span class="pill" style="border-color: #facc15; color: #facc15; background: #3a3311;">Bugün</span>
+      </div>
+    </div>
+
+    <div class="calendar-grid" id="calendarGrid">
+      </div>
+  </div>
+</div>
+
+<script>
+  // Uzun basma context menü engelle
+  document.addEventListener("contextmenu", function (e) {
+    e.preventDefault();
+  });
+
+  // Çift tık zoom engelle
+  let lastTouchEnd = 0;
+  document.addEventListener("touchend", function (event) {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) {
+      event.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, { passive: false });
+
+  const trMonths = [
+    "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+    "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
+  ];
+
+  // Haftayı Pzt'den başlat
+  const trWeekdaysShort = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+
+  const lastExitInput = document.getElementById("lastExitDate");
+  const saveBtn = document.getElementById("saveBtn");
+  const exitTodayBtn = document.getElementById("exitTodayBtn");
+  const exitYesterdayBtn = document.getElementById("exitYesterdayBtn");
+  const exitTwoDaysBtn = document.getElementById("exitTwoDaysBtn");
+  const infoSpan = document.getElementById("info");
+  const monthTitle = document.getElementById("monthTitle");
+  const calendarGrid = document.getElementById("calendarGrid");
+  const prevMonthBtn = document.getElementById("prevMonthBtn");
+  const nextMonthBtn = document.getElementById("nextMonthBtn");
+
+  let lastExitDate = null;
+  const today = new Date();
+  let currentYear = today.getFullYear();
+  let currentMonth = today.getMonth();
+
+  function toDateOnly(d) {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }
+
+  function formatDate(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const da = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${da}`;
+  }
+
+  function updateInfoText() {
+    if (!lastExitDate) {
+      infoSpan.textContent = "Çıkış günü seçilmedi.";
+      return;
+    }
+    infoSpan.textContent =
+      `Son çıkış: ${formatDate(lastExitDate)}`;
+  }
+
+  function saveLastExitDate(dateStr) {
+    if (!dateStr) return;
+    localStorage.setItem("lastExitDate_2448", dateStr);
+    // Saat dilimi sorunlarını önlemek için T00:00:00 ekle
+    lastExitDate = new Date(dateStr + "T00:00:00");
+    updateInfoText();
+    renderCalendar();
+  }
+
+  function setExitFromOffset(offsetDays) {
+    const d = new Date();
+    d.setDate(d.getDate() - offsetDays);
+    const str = formatDate(d);
+    lastExitInput.value = str;
+    saveLastExitDate(str);
+  }
+
+  function loadLastExitFromStorage() {
+    const stored =
+      localStorage.getItem("lastExitDate_2448") ||
+      localStorage.getItem("lastWorkDate_2448");
+
+    if (stored) {
+      lastExitDate = new Date(stored + "T00:00:00");
+      lastExitInput.value = stored;
+      updateInfoText();
+    } else {
+      setExitFromOffset(0);
+      infoSpan.textContent =
+        "Varsayılan: Bugün işten çıktın.";
+    }
+  }
+
+  // === İYİLEŞTİRİLMİŞ JS LOGİĞİ ===
+  // 24-48 döngüsü:
+  // diff % 3 == 0 → Tatil 1 (İşten çıkış günü)
+  // diff % 3 == 1 → Tatil 2
+  // diff % 3 == 2 → Çalışma
+  //
+  // Fonksiyon artık "off" yerine "off-1" veya "off-2" döndürüyor
+  // Bu, takvimde daha net bilgi vermemizi sağlıyor.
+  function getDayType(date) {
+    if (!lastExitDate) return "none";
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const diff = Math.floor((toDateOnly(date) - lastExitDate) / msPerDay);
+    
+    // (diff % 3 + 3) % 3 -> negatif sayılarda mod almanın güvenli yolu
+    const mod = ((diff % 3) + 3) % 3; 
+
+    if (mod === 0) return "off-1"; // Tatil 1 (Çıkış günü)
+    if (mod === 1) return "off-2"; // Tatil 2
+    if (mod === 2) return "work";  // Çalışma
+    return "none";
+  }
+
+  function isWeekend(date) {
+    const jsDay = date.getDay(); // 0=Pazar, 6=Cumartesi
+    return jsDay === 0 || jsDay === 6;
+  }
+
+  function sameDate(a, b) {
+    return (
+      a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate()
+    );
+  }
+
+  function renderCalendar() {
+    calendarGrid.innerHTML = "";
+
+    // Hafta başlıkları (Pzt–Paz)
+    for (let i = 0; i < 7; i++) {
+      const div = document.createElement("div");
+      div.className = "weekday-header";
+      div.textContent = trWeekdaysShort[i];
+      calendarGrid.appendChild(div);
+    }
+
+    const firstDay = new Date(currentYear, currentMonth, 1);
+    const lastDay = new Date(currentYear, currentMonth + 1, 0);
+    // JS getDay() Pazar=0. Biz Pzt=0 istiyoruz.
+    const firstWeekdayIndex = (firstDay.getDay() + 6) % 7; 
+
+    // Ayın başındaki boş hücreler
+    for (let i = 0; i < firstWeekdayIndex; i++) {
+      const cell = document.createElement("div");
+      cell.className = "day-cell empty";
+      calendarGrid.appendChild(cell);
+    }
+
+    // Ayın günleri
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+      const date = new Date(currentYear, currentMonth, day);
+      const cell = document.createElement("div");
+      cell.className = "day-cell";
+
+      const type = getDayType(date);
+      const weekend = isWeekend(date);
+
+      // Önce türü (çalışma/tatil) uygula
+      if (type === "work") {
+        cell.classList.add("work-day");
+      } else if (type === "off-1" || type === "off-2") {
+        cell.classList.add("off-day");
+      }
+
+      // Sonra hafta sonu stilini ekle (kenarlık)
+      if (weekend) {
+        cell.classList.add("weekend");
+      }
+
+      // Son olarak bugün stilini ekle (parlak çerçeve)
+      if (sameDate(date, toDateOnly(today))) {
+        cell.classList.add("today");
+      }
+
+      // Hücre içeriği
+      const numSpan = document.createElement("div");
+      numSpan.className = "day-number";
+      numSpan.textContent = day;
+
+      const labelSpan = document.createElement("div");
+      labelSpan.className = "day-label";
+
+      // === İYİLEŞTİRİLMİŞ ETİKETLER ===
+      if (!lastExitDate) {
+        labelSpan.textContent = "";
+      } else if (type === "work") {
+        labelSpan.textContent = "Çalışma";
+      } else if (type === "off-1") {
+        labelSpan.textContent = "Tatil 1"; // Çıkış günü
+      } else if (type === "off-2") {
+        labelSpan.textContent = "Tatil 2";
+      } else {
+        labelSpan.textContent = "";
+      }
+
+      cell.appendChild(numSpan);
+      cell.appendChild(labelSpan);
+      calendarGrid.appendChild(cell);
+    }
+
+    monthTitle.textContent = `${trMonths[currentMonth]} ${currentYear}`;
+  }
+
+  // === Event Listeners ===
+
+  saveBtn.addEventListener("click", () => {
+    const val = lastExitInput.value;
+    if (!val) {
+      infoSpan.textContent = "Lütfen tarih seçin.";
+      return;
+    }
+    saveLastExitDate(val);
+  });
+
+  exitTodayBtn.addEventListener("click", () => {
+    setExitFromOffset(0);
+  });
+
+  exitYesterdayBtn.addEventListener("click", () => {
+    setExitFromOffset(1);
+  });
+
+  exitTwoDaysBtn.addEventListener("click", () => {
+    // 2 gün önce çıktıysan, bugün ÇALIŞMA günündesin (Tatil 1, Tatil 2 geçti)
+    // Döngüye göre (Tatil 1 -> Tatil 2 -> Çalışma)
+    // Çıkış günü "Tatil 1" ise (offset 0),
+    // Dün "Tatil 1" ise (offset 1), bugün "Tatil 2"dir.
+    // 2 gün önce "Tatil 1" ise (offset 2), bugün "Çalışma"dır.
+    setExitFromOffset(2);
+  });
+
+  prevMonthBtn.addEventListener("click", () => {
+    currentMonth--;
+    if (currentMonth < 0) {
+      currentMonth = 11;
+      currentYear--;
+    }
+    renderCalendar();
+  });
+
+  nextMonthBtn.addEventListener("click", () => {
+    currentMonth++;
+    if (currentMonth > 11) {
+      currentMonth = 0;
+      currentYear++;
+    }
+    renderCalendar();
+  });
+
+  // İlk yükleme
+  loadLastExitFromStorage();
+  renderCalendar();
+</script>
+</body>
+</html>
